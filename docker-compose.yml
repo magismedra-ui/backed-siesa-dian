@@ -1,0 +1,76 @@
+version: '3.9'
+
+services:
+  # Microservicio API
+  api:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DB_HOST=mysql_db
+      - DB_USER=root
+      - DB_PASS=rootpassword
+      - DB_NAME=conciliacion_db
+      - REDIS_HOST=redis_queue
+      - REDIS_PORT=6379
+      - SIESA_WS_URL=http://mock_services:8080/siesa
+      - DIAN_WS_URL=http://mock_services:8080/dian
+      - JWT_SECRET=prod_secret_key
+    depends_on:
+      - mysql_db
+      - redis_queue
+    networks:
+      - app-network
+
+  # Base de Datos MySQL
+  mysql_db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: conciliacion_db
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - app-network
+
+ 
+  # Redis para Colas
+  redis_queue:
+    image: redis:latest
+    container_name: redis_app
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+
+  # PhpMyAdmin para gestión visual de BD
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: phpmyadmin_app
+    restart: always
+    environment:
+      PMA_HOST: mysql_db
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: rootpassword
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql_db
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  redis_data:
