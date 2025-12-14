@@ -45,6 +45,13 @@ const DocumentoStaging = sequelize.define(
   {
     tableName: "proc_documentos_staging",
     timestamps: true,
+    indexes: [
+      {
+        unique: true,
+        fields: ['fuente', 'nit_proveedor', 'num_factura'],
+        name: 'idx_unique_documento'
+      }
+    ]
   }
 );
 
