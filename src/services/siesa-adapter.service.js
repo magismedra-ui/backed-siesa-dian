@@ -107,9 +107,9 @@ class SiesaAdapterService {
    * @param {string} fechaFin
    * @param {string} nombreConsulta 'listar_facturas_servicios' o 'listar_facturas_proveedores'
    */
-  async getFacturas(fechaInicio, fechaFin, nombreConsulta) {
-    // Ejemplo de uso
-    const idCia = process.env.SIESA_CIA || "5";
+  async getFacturas(fechaInicio, fechaFin, nombreConsulta, idCia) {
+    // Si no se proporciona idCia, se usa la variable de entorno o el valor por defecto
+    const cia = idCia || process.env.SIESA_CIA || "5";
 
     // Validación de seguridad básica para evitar inyección en el nombre de la consulta
     const consultasPermitidas = [
@@ -127,7 +127,7 @@ class SiesaAdapterService {
 
     try {
       // Se pasan los parámetros con los nombres esperados por SIESA
-      const data = await this.ejecutarConsulta(idCia, nombreConsulta, {
+      const data = await this.ejecutarConsulta(cia, nombreConsulta, {
         fecha_desde: fechaInicio,
         fecha_hasta: fechaFin,
       });

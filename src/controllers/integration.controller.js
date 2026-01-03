@@ -8,13 +8,13 @@ const triggerIntegration = async (req, res, next) => {
     if (!fechaInicio || !fechaFin) {
       return res
         .status(400)
-        .json({ error: "fechaInicio and fechaFin are required" });
+        .json({ error: "fechaInicio y fechaFin son requeridos" });
     }
 
     const log = await Ejecucion.create({
       fecha_inicio: new Date(),
       estado: "PENDIENTE",
-      usuario_id: req.user?.id || 1, // Fallback to 1 if no user id
+      usuario_id: req.user?.id || 1, // Fallback a 1 si no hay id de usuario
     });
 
     if (integrationQueue) {
@@ -25,15 +25,15 @@ const triggerIntegration = async (req, res, next) => {
       });
 
       res.status(202).json({
-        message: "Integration process started successfully",
+        message: "Integración iniciada con éxito",
         executionId: log.id,
       });
     } else {
-      // Fallback si Redis no está disponible (solo para propósitos de debug/dev sin colas)
-      console.warn("Queue system unavailable. Saving log but not processing.");
+      // Fallback si Redis no está disponible (solo para propósitos de depuración/desarrollo sin colas)
+      console.warn("Sistema de cola no disponible. Guardando registro pero no procesando.");
       res.status(503).json({
         message:
-          "Integration recorded but processing queue is unavailable (Redis down).",
+          "Integración registrada pero la cola de procesamiento no está disponible (Redis caído).",
         executionId: log.id,
       });
     }
