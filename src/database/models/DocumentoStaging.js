@@ -9,6 +9,11 @@ const DocumentoStaging = sequelize.define(
       type: DataTypes.ENUM("DIAN", "SIESA"),
       allowNull: false,
     },
+    estado: {
+      type: DataTypes.ENUM("PENDIENTE", "EMPAREJADO"),
+      allowNull: false,
+      defaultValue: "PENDIENTE",
+    },
     nit_proveedor: {
       type: DataTypes.STRING(50),
       allowNull: false,

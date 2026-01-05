@@ -42,25 +42,41 @@ const setupWorker = () => {
       console.log(`Procesando Job ${job.id} para ejecución ${ejecucionId}`);
 
       try {
-        await Ejecucion.update(
-          { estado: "EN_PROCESO" },
-          { where: { id: ejecucionId } }
-        );
+        // Validar que el archivo existe y es accesible
+        if (!filePath || !fs.existsSync(filePath)) {
+          throw new Error(`El archivo no existe o no es accesible: ${filePath}`);
+        }
 
+        // Validar extensión del archivo
+        const fileExtension = filePath.toLowerCase().split('.').pop();
+        if (fileExtension !== 'xlsx' && fileExtension !== 'xls') {
+          throw new Error(`El archivo debe ser un Excel (.xlsx o .xls). Extensión recibida: .${fileExtension}`);
+        }
+
+        // No cambiar el estado - debe permanecer en PENDIENTE para datos de DIAN
         const errores = [];
         let processedCount = 0;
         let batch = [];
         const BATCH_SIZE = 1000;
 
-        const workbookReader = new ExcelJS.stream.xlsx.WorkbookReader(
-          filePath,
-          {
-            entries: "emit",
-            sharedStrings: "cache",
-            hyperlinks: "ignore",
-            styles: "ignore",
+        let workbookReader;
+        try {
+          workbookReader = new ExcelJS.stream.xlsx.WorkbookReader(
+            filePath,
+            {
+              entries: "emit",
+              sharedStrings: "cache",
+              hyperlinks: "ignore",
+              styles: "ignore",
+            }
+          );
+        } catch (readError) {
+          // Capturar errores específicos de lectura de archivo
+          if (readError.message.includes('invalid signature') || readError.message.includes('0x')) {
+            throw new Error('El archivo no es un archivo Excel válido o está corrupto. Por favor, verifica que el archivo sea un .xlsx válido.');
           }
-        );
+          throw new Error(`Error al leer el archivo Excel: ${readError.message}`);
+        }
 
         let headers = null;
         const COLUMNAS = {
@@ -72,8 +88,9 @@ const setupWorker = () => {
           iva: ["iva", "impuestos"],
         };
 
-        for await (const worksheetReader of workbookReader) {
-          for await (const row of worksheetReader) {
+        try {
+          for await (const worksheetReader of workbookReader) {
+            for await (const row of worksheetReader) {
             if (row.number === 1) {
               headers = row.values
                 .slice(1)
@@ -145,10 +162,7 @@ const setupWorker = () => {
                   batch = []; // SIEMPRE LIMPIAR BATCH DESPUES DE INTENTO
                 }
 
-                await Ejecucion.update(
-                  { docs_procesados: processedCount },
-                  { where: { id: ejecucionId } }
-                );
+                // No actualizar docs_procesados - debe permanecer en 0 para datos de DIAN
               }
             } catch (rowError) {
               errores.push({
@@ -158,6 +172,13 @@ const setupWorker = () => {
               });
             }
           }
+        }
+        } catch (readError) {
+          // Capturar errores durante la lectura/iteración del archivo
+          if (readError.message && (readError.message.includes('invalid signature') || readError.message.includes('0x'))) {
+            throw new Error('El archivo no es un archivo Excel válido o está corrupto. Por favor, verifica que el archivo sea un .xlsx válido y no esté dañado.');
+          }
+          throw new Error(`Error al procesar el archivo Excel: ${readError.message}`);
         }
 
         if (batch.length > 0) {
@@ -174,23 +195,26 @@ const setupWorker = () => {
           }
         }
 
+        // Para datos de DIAN (Excel), mantener estado en PENDIENTE y docs_procesados en 0
         await Ejecucion.update(
           {
-            estado:
-              errores.length > 0 ? "COMPLETADO_CON_ERRORES" : "COMPLETADO",
-            fecha_fin: new Date(),
-            docs_procesados: processedCount,
+            estado: "PENDIENTE",
+            docs_procesados: 0,
             errores: errores.length > 0 ? errores : null,
           },
           { where: { id: ejecucionId } }
         );
       } catch (error) {
         console.error("Error Worker:", error);
+        
+        // Mensaje de error más descriptivo
+        const errorMessage = error.message || 'Error desconocido al procesar el archivo Excel';
+        
         await Ejecucion.update(
           {
             estado: "FALLIDO",
             fecha_fin: new Date(),
-            errores: [{ error_general: error.message }],
+            errores: [{ error_general: errorMessage }],
           },
           { where: { id: ejecucionId } }
         );

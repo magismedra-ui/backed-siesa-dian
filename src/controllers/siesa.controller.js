@@ -91,11 +91,8 @@ const syncFacturas = async (req, res, next) => {
     }
 
     if (!dataSiesa || dataSiesa.length === 0) {
-      await ejecucion.update({
-        estado: "FINALIZADO",
-        fecha_fin: new Date(),
-        docs_procesados: 0,
-      });
+      // Mantener estado en PENDIENTE y docs_procesados en 0 para datos de SIESA
+      // No actualizar el estado de la ejecución
 
       return res.status(200).json({
         success: true,
@@ -162,12 +159,8 @@ const syncFacturas = async (req, res, next) => {
       }
     }
 
-    // 4. Actualizar estado de ejecución
-    await ejecucion.update({
-      fecha_fin: new Date(),
-      estado: "FINALIZADO",
-      docs_procesados: totalProcesados,
-    });
+    // 4. No actualizar estado de ejecución - debe permanecer en PENDIENTE y docs_procesados en 0
+    // para datos de SIESA, similar a los datos de DIAN
 
     res.status(200).json({
       success: true,

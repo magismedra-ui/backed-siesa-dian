@@ -5,7 +5,7 @@ const uploadExcelController = async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Falta archivo' });
     
     // ID temporal si no hay auth
-    const userId = req.user?.id || req.body.usuario_id || 2; 
+    const userId = req.user?.id || req.body.usuario_id || 1; 
     
     const result = await uploadService.processExcelUpload(req.file.path, userId);
     res.json(result);

@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS `sys_usuarios` (
 -- --------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `cfg_parametros` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
-  `clave` VARCHAR(50) NOT NULL,
+  `clave` ENUM('TOLERANCIA_COP', 'REINTENTOS_MAX') NOT NULL,
   `valor` VARCHAR(255) NOT NULL,
   `tipo_dato` ENUM('NUMERICO', 'TEXTO', 'BOOLEANO') NOT NULL,
   `descripcion` TEXT DEFAULT NULL,
@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS `proc_documentos_staging` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `ejecucion_id` INT(11) NOT NULL,
   `fuente` ENUM('DIAN', 'SIESA') NOT NULL,
+  `estado` ENUM('PENDIENTE', 'EMPAREJADO') NOT NULL DEFAULT 'PENDIENTE',
   `nit_proveedor` VARCHAR(50) NOT NULL,
   `num_factura` VARCHAR(50) NOT NULL,
   `fecha_emision` DATE NOT NULL,

@@ -6,7 +6,7 @@ const Parametro = sequelize.define(
   {
     // id se crea automáticamente
     clave: {
-      type: DataTypes.STRING(50),
+      type: DataTypes.ENUM('TOLERANCIA_COP', 'REINTENTOS_MAX'),
       allowNull: false,
       unique: true,
     },

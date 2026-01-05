@@ -83,23 +83,12 @@ try {
           await DocumentoStaging.bulkCreate(allData);
         }
 
-        const finalStatus =
-          siesaResults.status === "rejected" ||
-          dianResults.status === "rejected"
-            ? "FALLA" // O 'PARCIAL' si tuviéramos ese estado
-            : "EXITO"; // 'EXITO' no está en el ENUM del modelo, es 'FINALIZADO'
-
-        await Ejecucion.update(
-          {
-            estado: finalStatus === "FALLA" ? "FALLIDO" : "FINALIZADO",
-            fecha_fin: new Date(),
-            docs_procesados: allData.length,
-          },
-          { where: { id: id_ejecucion } }
-        );
+        // No actualizar estado de ejecución - debe permanecer en PENDIENTE y docs_procesados en 0
+        // cuando se guardan datos de SIESA o DIAN en staging
+        // Solo se marca como FALLIDO si hay un error fatal
 
         console.log(
-          `Ejecución #${id_ejecucion} finalizada. Estado: ${finalStatus}`
+          `Ejecución #${id_ejecucion} - Documentos guardados en staging. Estado: PENDIENTE`
         );
       } catch (error) {
         console.error(`Error fatal en ejecución #${id_ejecucion}:`, error);
