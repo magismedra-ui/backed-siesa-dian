@@ -8,9 +8,11 @@ const connection = new IORedis(process.env.REDIS_URL || {
 });
 
 const excelQueue = new Queue('excel-processing', { connection });
+const conciliacionQueue = new Queue('conciliacion-process', { connection });
 
 module.exports = {
   excelQueue,
+  conciliacionQueue,
   redisConnection: connection
 };
 
