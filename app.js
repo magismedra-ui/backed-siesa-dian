@@ -10,6 +10,7 @@ const facturaEmailRoutes = require("./src/routes/factura-email.routes");
 const uploadRoutes = require("./src/routes/upload.routes");
 const siesaRoutes = require("./src/routes/siesa.routes");
 const conciliacionRoutes = require("./src/routes/conciliacion.routes");
+const logsRoutes = require("./src/routes/logs.routes");
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use("/api/v1/factura-email", facturaEmailRoutes);
 app.use("/api/v1/procesos", uploadRoutes);
 app.use("/api/v1/siesa", siesaRoutes);
 app.use("/api/v1/conciliacion", conciliacionRoutes);
+app.use("/api/v1/logs", logsRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);

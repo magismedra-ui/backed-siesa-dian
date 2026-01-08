@@ -4,6 +4,7 @@ const ExcelJS = require("exceljs");
 const fs = require("fs");
 const Ejecucion = require("../database/models/Ejecucion");
 const DocumentoStaging = require("../database/models/DocumentoStaging");
+const { log, calcularDuracionMinutos } = require("../logger/redisLogger");
 
 // Helper robusto para parsear fechas (acepta DD-MM-YYYY y YYYY-MM-DD)
 const parseDate = (dateStr) => {
@@ -33,13 +34,30 @@ const parseDate = (dateStr) => {
   return isNaN(parsedDate.getTime()) ? null : parsedDate;
 };
 
+// Mapa para almacenar startTime por jobId (evitar bloquear workers)
+const jobStartTimes = new Map();
+
 const setupWorker = () => {
   console.log("Inicializando Worker de Excel...");
   const worker = new Worker(
     "excel-processing",
     async (job) => {
       const { filePath, ejecucionId, usuarioId } = job.data;
+      const jobId = String(job.id);
+      const startTime = Date.now();
+      
+      // Guardar startTime
+      jobStartTimes.set(jobId, startTime);
+
       console.log(`Procesando Job ${job.id} para ejecución ${ejecucionId}`);
+
+      // Log de inicio
+      await log({
+        jobId: jobId,
+        proceso: "excel-processing",
+        nivel: "info",
+        mensaje: `Inicio de procesamiento de archivo Excel. Ejecución ID: ${ejecucionId}`,
+      });
 
       try {
         // Validar que el archivo existe y es accesible
@@ -153,6 +171,14 @@ const setupWorker = () => {
                   await DocumentoStaging.bulkCreate(batch, {
                     ignoreDuplicates: true,
                   });
+
+                  // Log de progreso cada lote
+                  await log({
+                    jobId: jobId,
+                    proceso: "excel-processing",
+                    nivel: "info",
+                    mensaje: `Procesados ${processedCount} registros hasta el momento`,
+                  });
                 } catch (batchError) {
                   console.error("Error insertando Batch:", batchError.message);
                   throw new Error(
@@ -195,6 +221,12 @@ const setupWorker = () => {
           }
         }
 
+        // Calcular duración
+        const endTime = Date.now();
+        const duracionMs = endTime - startTime;
+        const duracionSegundos = duracionMs / 1000;
+        const duracionMinutos = calcularDuracionMinutos(duracionSegundos);
+
         // Para datos de DIAN (Excel), mantener estado en PENDIENTE y docs_procesados en 0
         await Ejecucion.update(
           {
@@ -204,9 +236,29 @@ const setupWorker = () => {
           },
           { where: { id: ejecucionId } }
         );
+
+        // Log de finalización exitosa
+        await log({
+          jobId: jobId,
+          proceso: "excel-processing",
+          nivel: errores.length > 0 ? "warn" : "info",
+          mensaje: `Procesamiento completado. Total procesados: ${processedCount}. Errores: ${errores.length}`,
+          duracionSegundos: duracionSegundos,
+          duracionMinutos: duracionMinutos,
+        });
+
+        // Limpiar startTime
+        jobStartTimes.delete(jobId);
       } catch (error) {
         console.error("Error Worker:", error);
         
+        // Calcular duración parcial
+        const endTime = Date.now();
+        const startTimeRecorded = jobStartTimes.get(jobId) || startTime;
+        const duracionMs = endTime - startTimeRecorded;
+        const duracionSegundos = duracionMs / 1000;
+        const duracionMinutos = calcularDuracionMinutos(duracionSegundos);
+
         // Mensaje de error más descriptivo
         const errorMessage = error.message || 'Error desconocido al procesar el archivo Excel';
         
@@ -218,6 +270,19 @@ const setupWorker = () => {
           },
           { where: { id: ejecucionId } }
         );
+
+        // Log de error
+        await log({
+          jobId: jobId,
+          proceso: "excel-processing",
+          nivel: "error",
+          mensaje: `Error en procesamiento: ${errorMessage}`,
+          duracionSegundos: duracionSegundos,
+          duracionMinutos: duracionMinutos,
+        });
+
+        // Limpiar startTime
+        jobStartTimes.delete(jobId);
         throw error;
       } finally {
         if (filePath && fs.existsSync(filePath)) {

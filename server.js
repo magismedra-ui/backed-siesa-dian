@@ -5,18 +5,22 @@ const { connectDB } = require('./src/database/connection');
 const { setupWorker } = require('./src/services/excel-worker.service');
 const { setupConciliacionWorker } = require('./src/services/conciliacion-worker.service');
 const { setupConciliacionScheduler } = require('./src/services/conciliacion-scheduler.service');
+const { initialize: initializeLogger } = require('./src/logger/redisLogger');
 
 const PORT = process.env.PORT || 3000;
 
 const startServer = async () => {
   await connectDB();
   
+  // Inicializar Logger
+  await initializeLogger();
+  
   // Inicializar Workers
-  //setupWorker();
-  //setupConciliacionWorker();
+  setupWorker();
+  setupConciliacionWorker();
   
   // Inicializar Scheduler de Conciliación (si está habilitado)
-  //setupConciliacionScheduler();
+  setupConciliacionScheduler();
 
   app.use(responseTime());
   app.listen(PORT, () => {
